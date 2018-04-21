@@ -48,8 +48,11 @@ class LearningAgent(Agent):
         if testing:
             self.epsilon = 0.0
             self.alpha = 0.0
+        elif self.decay_method == 'exp':
+            # Exponential decay for epsilon = exp(-decay_rate * t)
+            self.epsilon = math.exp(-self.decay_rate * self.trials)
         else:
-            # Default learning
+            # Default learning, linear decay for epsilon = epsilon - decay_rate
             self.epsilon = self.epsilon - self.decay_rate
 
         return None
@@ -180,6 +183,13 @@ def run():
     #   grid_size   - discrete number of intersections (columns, rows), default is (8, 6)
     env = Environment()
     
+    enforce_deadline = True
+    update_delay = 0.01
+    display = False
+    log_metrics = True
+    tolerance = 0.05
+    n_test = 10
+
     ##############
     # Create the driving agent
     # Flags:
@@ -190,14 +200,20 @@ def run():
     #    * decay_rate   - linear rate, default is 0.05
     # No learning agent
     # agent = env.create_agent(LearningAgent)
-    # Default learning agent
-    agent = env.create_agent(LearningAgent, learning=True)
+    # Default learning agent, epsilon = epsilon - decay_rate
+    # agent = env.create_agent(LearningAgent, learning=True)
+    # Improved learning agent, epsilon = exp(-decay_rate * t)
+    optimized = True
+    decay_method = 'exp'
+    decay_rate = 0.05
+    alpha=0.5
+    agent = env.create_agent(LearningAgent, learning=True, alpha=alpha, decay_method=decay_method, decay_rate=decay_rate)
     
     ##############
     # Follow the driving agent
     # Flags:
     #   enforce_deadline - set to True to enforce a deadline metric
-    env.set_primary_agent(agent, enforce_deadline=True)
+    env.set_primary_agent(agent, enforce_deadline=enforce_deadline)
 
     ##############
     # Create the simulation
@@ -206,14 +222,14 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env, update_delay=0.01, display=False, log_metrics=True)
+    sim = Simulator(env, update_delay=update_delay, display=display, log_metrics=log_metrics, optimized=optimized, alpha=alpha, decay_method=decay_method, decay_rate=decay_rate)
     
     ##############
     # Run the simulator
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05 
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(n_test=10)
+    sim.run(tolerance=tolerance, n_test=n_test)
 
 
 if __name__ == '__main__':
