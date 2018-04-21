@@ -205,8 +205,8 @@ def run():
     # Improved learning agent, epsilon = exp(-decay_rate * t)
     optimized = True
     decay_method = 'exp'
-    decay_rate = 0.05
-    alpha=0.5
+    decay_rate = 0.001
+    alpha=0.001
     agent = env.create_agent(LearningAgent, learning=True, alpha=alpha, decay_method=decay_method, decay_rate=decay_rate)
     
     ##############
