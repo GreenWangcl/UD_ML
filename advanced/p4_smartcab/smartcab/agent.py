@@ -8,7 +8,7 @@ class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
         This is the object you will be modifying. """ 
 
-    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5):
+    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5, decay_method='linear', decay_rate=0.05):
         super(LearningAgent, self).__init__(env)     # Set the agent in the evironment 
         self.planner = RoutePlanner(self.env, self)  # Create a route planner
         self.valid_actions = self.env.valid_actions  # The set of valid actions
@@ -23,7 +23,11 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
-
+        # For regenerating the same set of random numbers
+        random.seed(10)
+        self.trials = 0
+        self.decay_rate = decay_rate
+        self.decay_method = decay_method
 
     def reset(self, destination=None, testing=False):
         """ The reset function is called at the beginning of each trial.
@@ -39,6 +43,14 @@ class LearningAgent(Agent):
         # Update epsilon using a decay function of your choice
         # Update additional class parameters as needed
         # If 'testing' is True, set epsilon and alpha to 0
+        self.trials = self.trials + 1
+
+        if testing:
+            self.epsilon = 0.0
+            self.alpha = 0.0
+        else:
+            # Default learning
+            self.epsilon = self.epsilon - self.decay_rate
 
         return None
 
@@ -56,7 +68,7 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set 'state' as a tuple of relevant data for the agent        
-        state = None
+        state = (waypoint, inputs['light'], inputs['left'], inputs['right'], inputs['oncoming'])
 
         return state
 
@@ -70,9 +82,14 @@ class LearningAgent(Agent):
         ###########
         # Calculate the maximum Q-value of all actions for a given state
 
-        maxQ = None
+        maxQ = max(self.Q[state].values())
 
-        return maxQ 
+        maxQ_actions = []
+        for action, Q in self.Q[state].items():
+            if Q == maxQ:
+                maxQ_actions.append(action)
+
+        return maxQ, maxQ_actions
 
 
     def createQ(self, state):
@@ -84,6 +101,10 @@ class LearningAgent(Agent):
         # When learning, check if the 'state' is not in the Q-table
         # If it is not, create a new dictionary for that state
         #   Then, for each action available, set the initial Q-value to 0.0
+        if not self.learning:
+            return
+        if state not in self.Q:
+            self.Q[state] = dict((action_item, 0.0) for action_item in self.valid_actions)
 
         return
 
@@ -101,8 +122,16 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # When not learning, choose a random action
+        if not self.learning:
+            action = random.choice(self.valid_actions)
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
+        else:
+            if self.epsilon > random.random():
+                action = random.choice(self.valid_actions)
+            else:
+                maxQ, maxQ_actions = self.get_maxQ(state)
+                action = random.choice(maxQ_actions)
  
         return action
 
@@ -117,6 +146,10 @@ class LearningAgent(Agent):
         ###########
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
+        if not self.learning:
+            return
+
+        self.Q[state][action] = reward * self.alpha + self.Q[state][action] * (1 - self.alpha)
 
         return
 
@@ -153,13 +186,18 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent)
+    #    * decay_method   - decay mothod, default is 'linear'
+    #    * decay_rate   - linear rate, default is 0.05
+    # No learning agent
+    # agent = env.create_agent(LearningAgent)
+    # Default learning agent
+    agent = env.create_agent(LearningAgent, learning=True)
     
     ##############
     # Follow the driving agent
     # Flags:
     #   enforce_deadline - set to True to enforce a deadline metric
-    env.set_primary_agent(agent)
+    env.set_primary_agent(agent, enforce_deadline=True)
 
     ##############
     # Create the simulation
@@ -168,14 +206,14 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env)
+    sim = Simulator(env, update_delay=0.01, display=False, log_metrics=True)
     
     ##############
     # Run the simulator
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05 
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run()
+    sim.run(n_test=10)
 
 
 if __name__ == '__main__':
