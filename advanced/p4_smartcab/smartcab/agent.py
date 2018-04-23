@@ -51,6 +51,9 @@ class LearningAgent(Agent):
         elif self.decay_method == 'exp':
             # Exponential decay for epsilon = exp(-decay_rate * t)
             self.epsilon = math.exp(-self.decay_rate * self.trials)
+        elif self.decay_method == 'cos':
+            # Cos decay for epsilon = cos(decay_rate * t)
+            self.epsilon = math.cos(self.decay_rate * self.trials)
         else:
             # Default learning, linear decay for epsilon = epsilon - decay_rate
             self.epsilon = self.epsilon - self.decay_rate
@@ -87,12 +90,7 @@ class LearningAgent(Agent):
 
         maxQ = max(self.Q[state].values())
 
-        maxQ_actions = []
-        for action, Q in self.Q[state].items():
-            if Q == maxQ:
-                maxQ_actions.append(action)
-
-        return maxQ, maxQ_actions
+        return maxQ
 
 
     def createQ(self, state):
@@ -104,10 +102,8 @@ class LearningAgent(Agent):
         # When learning, check if the 'state' is not in the Q-table
         # If it is not, create a new dictionary for that state
         #   Then, for each action available, set the initial Q-value to 0.0
-        if not self.learning:
-            return
-        if state not in self.Q:
-            self.Q[state] = dict((action_item, 0.0) for action_item in self.valid_actions)
+        if self.learning:
+            self.Q.setdefault(state, {action: 0.0 for action in self.valid_actions})
 
         return
 
@@ -133,7 +129,13 @@ class LearningAgent(Agent):
             if self.epsilon > random.random():
                 action = random.choice(self.valid_actions)
             else:
-                maxQ, maxQ_actions = self.get_maxQ(state)
+                maxQ = self.get_maxQ(state)
+
+                maxQ_actions = []
+                for action, Q in self.Q[state].items():
+                    if Q == maxQ:
+                        maxQ_actions.append(action)
+
                 action = random.choice(maxQ_actions)
  
         return action
@@ -193,10 +195,10 @@ def run():
     ##############
     # Create the driving agent
     # Flags:
-    #   learning   - set to True to force the driving agent to use Q-learning
-    #    * epsilon - continuous value for the exploration factor, default is 1
-    #    * alpha   - continuous value for the learning rate, default is 0.5
-    #    * decay_method   - decay mothod, default is 'linear'
+    #   learning        - set to True to force the driving agent to use Q-learning
+    #    * epsilon      - continuous value for the exploration factor, default is 1
+    #    * alpha        - continuous value for the learning rate, default is 0.5
+    #    * decay_method - decay mothod, default is 'linear'
     #    * decay_rate   - linear rate, default is 0.05
     # No learning agent
     # agent = env.create_agent(LearningAgent)
@@ -206,8 +208,7 @@ def run():
     optimized = True
     decay_method = 'exp'
     decay_rate = 0.001
-    alpha=0.001
-    agent = env.create_agent(LearningAgent, learning=True, alpha=alpha, decay_method=decay_method, decay_rate=decay_rate)
+    agent = env.create_agent(LearningAgent, learning=True, decay_method=decay_method, decay_rate=decay_rate)
     
     ##############
     # Follow the driving agent
@@ -222,7 +223,7 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env, update_delay=update_delay, display=display, log_metrics=log_metrics, optimized=optimized, alpha=alpha, decay_method=decay_method, decay_rate=decay_rate)
+    sim = Simulator(env, update_delay=update_delay, display=display, log_metrics=log_metrics, optimized=optimized)
     
     ##############
     # Run the simulator
