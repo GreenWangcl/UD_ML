@@ -130,13 +130,9 @@ class LearningAgent(Agent):
                 action = random.choice(self.valid_actions)
             else:
                 maxQ = self.get_maxQ(state)
+                max_keys = [k for k, v in self.Q[state].items() if v == maxQ]
 
-                maxQ_actions = []
-                for action, Q in self.Q[state].items():
-                    if Q == maxQ:
-                        maxQ_actions.append(action)
-
-                action = random.choice(maxQ_actions)
+                action = random.choice(max_keys)
  
         return action
 
@@ -189,7 +185,6 @@ def run():
     update_delay = 0.01
     display = False
     log_metrics = True
-    tolerance = 0.05
     n_test = 10
 
     ##############
@@ -206,7 +201,8 @@ def run():
     # agent = env.create_agent(LearningAgent, learning=True)
     # Improved learning agent, epsilon = exp(-decay_rate * t)
     optimized = True
-    decay_method = 'exp'
+    decay_method = 'cos'
+    tolerance = 0.001
     decay_rate = 0.001
     agent = env.create_agent(LearningAgent, learning=True, decay_method=decay_method, decay_rate=decay_rate)
     
